@@ -1,0 +1,80 @@
+name: Boomi CICD Deployments
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    env:
+      BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+      BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+      BOOMI_TOKEN: ${{ secrets.BOOMI_TOKEN }}
+      BOOMI_ENVIRONMENT_NAME: Development
+    steps:
+      - uses: actions/checkout@v4
+      # (Optionally) check out your private boomi-cicd-cli-py library with a PAT
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CICD tool
+        run: |
+          pip install boomi-cicd-cli-py
+      - name: Deploy to Boomi Development
+        run: |
+          boomi-cicd deploy \
+            --account $BOOMI_ACCOUNT_ID \
+            --username $BOOMI_USERNAME \
+            --token $BOOMI_TOKEN \
+            --env "$BOOMI_ENVIRONMENT_NAME" \
+            --release-file boomi_release/release.json
+
+  deploy-stage:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: Stage   # add approval in GitHub Environments UI
+    env:
+      BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+      BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+      BOOMI_TOKEN: ${{ secrets.BOOMI_TOKEN }}
+      BOOMI_ENVIRONMENT_NAME: Stage
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Deploy to Boomi Stage
+        run: |
+          boomi-cicd deploy \
+            --account $BOOMI_ACCOUNT_ID \
+            --username $BOOMI_USERNAME \
+            --token $BOOMI_TOKEN \
+            --env "$BOOMI_ENVIRONMENT_NAME" \
+            --release-file boomi_release/release.json
+
+  deploy-prod:
+    needs: deploy-stage
+    runs-on: ubuntu-latest
+    environment: Production  # add approval in GitHub Environments UI
+    env:
+      BOOMI_ACCOUNT_ID: ${{ secrets.BOOMI_ACCOUNT_ID }}
+      BOOMI_USERNAME: ${{ secrets.BOOMI_USERNAME }}
+      BOOMI_TOKEN: ${{ secrets.BOOMI_TOKEN }}
+      BOOMI_ENVIRONMENT_NAME: Production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Deploy to Boomi Production
+        run: |
+          boomi-cicd deploy \
+            --account $BOOMI_ACCOUNT_ID \
+            --username $BOOMI_USERNAME \
+            --token $BOOMI_TOKEN \
+            --env "$BOOMI_ENVIRONMENT_NAME" \
+            --release-file boomi_release/release.json
