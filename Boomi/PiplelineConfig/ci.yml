@@ -1,0 +1,54 @@
+name: Boomi CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Prepare Boomi auth
+        id: auth
+        run: |
+          echo "token=$(echo -n '${{ secrets.BOOMI_USERNAME }}:${{ secrets.BOOMI_PASSWORD }}' | base64)" >> $GITHUB_OUTPUT
+
+      - name: Static checks (linters / json schema / naming)
+        run: |
+          ./scripts/static_checks.sh
+
+      - name: Validate process in Boomi (simulate/verify)
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Basic ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d @.boomi/validate_request.json \
+            "https://api.boomi.com/api/rest/v1/${{ secrets.BOOMI_ACCOUNT_ID }}/Process/validate" \
+          | jq .
+
+      - name: Build package (Boomi)
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Basic ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d @.boomi/build_request.json \
+            "https://api.boomi.com/api/rest/v1/${{ secrets.BOOMI_ACCOUNT_ID }}/Deployment/build" \
+          | tee build.json
+          VERSION=$(jq -r '.packageVersion' build.json)
+          echo "version=$VERSION" >> $GITHUB_ENV
+
+      - name: Persist artifact with version tag
+        uses: actions/upload-artifact@v4
+        with:
+          name: boomi-package-${{ env.version }}
+          path: dist/*.zip
