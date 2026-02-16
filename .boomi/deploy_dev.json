@@ -1,8 +1,9 @@
 
 {
-  "packageId": "V1.1", //PACKAGE_ID_OR_VERSION
-  "environmentId": "Development_Env", //Env Name
+  "packageId": "V1.1", 
+  "environmentId": "Development_Env",
   "notes": "Deploy to Dev",
   "forceRestart": true
 }
+
 
