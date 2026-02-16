@@ -1,0 +1,4 @@
+{
+  "componentId": "COMPONENT_ID",
+  "options": { "validateConnectors": true, "validateMaps": true }
+}
